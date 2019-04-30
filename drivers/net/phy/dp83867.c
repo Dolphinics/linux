@@ -19,6 +19,7 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/phy.h>
+#include <linux/delay.h>
 
 #include <dt-bindings/net/ti-dp83867.h>
 
@@ -260,14 +261,9 @@ static int dp83867_config_init(struct phy_device *phydev)
 		dp83867 = (struct dp83867_private *)phydev->priv;
 	}
 
-	/* RX_DV/RX_CTRL strapped in mode 1 or mode 2 workaround */
-	if (dp83867->rxctrl_strap_quirk) {
-		val = phy_read_mmd(phydev, DP83867_DEVADDR, DP83867_CFG4);
-		val &= ~BIT(7);
-		phy_write_mmd(phydev, DP83867_DEVADDR, DP83867_CFG4, val);
-	}
-
 	if (phy_interface_is_rgmii(phydev)) {
+		printk("dp83867: is RGMII\n");
+
 		ret = phy_write(phydev, MII_DP83867_PHYCTRL,
 			(DP83867_MDI_CROSSOVER_AUTO << DP83867_MDI_CROSSOVER) |
 			(dp83867->fifo_depth << DP83867_PHYCR_FIFO_DEPTH_SHIFT));
@@ -297,8 +293,9 @@ static int dp83867_config_init(struct phy_device *phydev)
 		ret = phy_write(phydev, MII_DP83867_PHYCTRL, val);
 		if (ret)
 			return ret;
-
 	} else {
+		printk("dp83867: is SGMII\n");
+
 		/* Set SGMIICTL1 6-wire mode */
 		if (dp83867->wiremode_6)
 			phy_write_mmd(phydev, DP83867_DEVADDR,
@@ -307,38 +304,22 @@ static int dp83867_config_init(struct phy_device *phydev)
 		phy_write(phydev, MII_BMCR,
 			  (BMCR_ANENABLE | BMCR_FULLDPLX | BMCR_SPEED1000));
 
-		cfg2 = phy_read(phydev, MII_DP83867_CFG2);
-		cfg2 &= MII_DP83867_CFG2_MASK;
-		cfg2 |= (MII_DP83867_CFG2_SPEEDOPT_10EN |
-			 MII_DP83867_CFG2_SGMII_AUTONEGEN |
-			 MII_DP83867_CFG2_SPEEDOPT_ENH |
-			 MII_DP83867_CFG2_SPEEDOPT_CNT |
-			 MII_DP83867_CFG2_SPEEDOPT_INTLOW);
-		phy_write(phydev, MII_DP83867_CFG2, cfg2);
-
+		/* Disable RGMII */
 		phy_write_mmd(phydev, DP83867_DEVADDR, DP83867_RGMIICTL, 0x0);
 
-		phy_write(phydev, MII_DP83867_PHYCTRL,
-			  DP83867_PHYCTRL_SGMIIEN |
-			  (DP83867_MDI_CROSSOVER_MDIX << DP83867_MDI_CROSSOVER) |
-			  (dp83867->fifo_depth << DP83867_PHYCTRL_RXFIFO_SHIFT) |
-			  (dp83867->fifo_depth  << DP83867_PHYCTRL_TXFIFO_SHIFT));
+		/* SGMII autoneg timer 11 ms, Port mirror disable */
+		phy_write_mmd(phydev, DP83867_DEVADDR, DP83867_CFG4, 0x0070);
+
+		/* No self-test  */
 		phy_write(phydev, MII_DP83867_BISCR, 0x0);
 
-		/* This is a SW workaround for link instability if
-		 * RX_CTRL is not strapped to mode 3 or 4 in HW.
-		 */
-		if (dp83867->rxctrl_strap_quirk) {
-			val = phy_read_mmd(phydev, DP83867_DEVADDR,
-					   DP83867_CFG4);
-			val &= ~DP83867_CFG4_RESVDBIT7;
-			val |= DP83867_CFG4_RESVDBIT8;
-			val &= ~DP83867_CFG4_SGMII_AUTONEG_TIMER_MASK;
-			val |= DP83867_CFG4_SGMII_AUTONEG_TIMER_11MS;
-			phy_write_mmd(phydev, DP83867_DEVADDR, DP83867_CFG4,
-				      val);
-		}
+		/* Robust Auto-MDIZ, INT_OE */
+		phy_write(phydev, DP83867_CFG3, 0x282);
+
+		/* SGMII Enable */
+		phy_write(phydev, MII_DP83867_PHYCTRL, 0x5868);
 	}
+
 
 	if ((phydev->interface >= PHY_INTERFACE_MODE_RGMII_ID) &&
 	    (phydev->interface <= PHY_INTERFACE_MODE_RGMII_RXID)) {
@@ -402,6 +383,8 @@ static int dp83867_phy_reset(struct phy_device *phydev)
 	err = phy_write(phydev, DP83867_CTRL, DP83867_SW_RESET);
 	if (err < 0)
 		return err;
+
+	usleep_range(200, 220);
 
 	return dp83867_config_init(phydev);
 }
