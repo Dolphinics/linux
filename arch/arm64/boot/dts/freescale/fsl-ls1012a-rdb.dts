@@ -9,6 +9,7 @@
 /dts-v1/;
 
 #include "fsl-ls1012a.dtsi"
+#include <dt-bindings/net/ti-dp83867.h>
 
 / {
 	model = "LS1012A RDB Board";
@@ -16,37 +17,95 @@
 
 	aliases {
 		ethernet0 = &pfe_mac0;
-		ethernet1 = &pfe_mac1;
+                spi0 = &qspi;
+                spi1 = &dspi;
+
 	};
 };
 
 &pcie {
-	status = "okay";
+	status = "disabled";
 };
 
 &duart0 {
 	status = "okay";
 };
 
+&duart1 {
+        status = "okay";
+};
+
+
 &esdhc0 {
+/* Keep for future SD card optimizations
 	sd-uhs-sdr104;
 	sd-uhs-sdr50;
 	sd-uhs-sdr25;
 	sd-uhs-sdr12;
+*/
 	status = "okay";
 };
 
 &esdhc1 {
 	mmc-hs200-1_8v;
-	status = "okay";
+	status = "disabled";
 };
 
 &i2c0 {
 	status = "okay";
+        ioexp0@25 {
+                compatible = "nxp,pcal9555a";
+                #address-cells = <0x1>;
+                #size-cells = <0x0>;
+                reg = <0x25>;
+                gpio-controller;
+                #gpio-cells = <0x2>;
+                dma-names = "rx", "tx";
+                gpio-line-names = "GPIO0", "GPIO1", "GPIO2", "GPIO3", "GPIO4", "GPIO5", "GPIO6", "GPIO7", "GPIO8", "GPIO9", "GPIO10", "GPIO11", "GPIO12", "GPIO13", "GPIO14", "GPIO15";
+        };
+
+        ioexp1@26 {
+                compatible = "nxp,pcal9555a";
+                #address-cells = <0x1>;
+                #size-cells = <0x0>;
+                reg = <0x26>;
+                gpio-controller;
+                #gpio-cells = <0x2>;
+        };
+
+        ioexp2@27 {
+                compatible = "nxp,pcal9555a";
+                #address-cells = <0x1>;
+                #size-cells = <0x0>;
+                reg = <0x27>;
+                gpio-controller;
+                #gpio-cells = <0x2>;
+        };
+
+        ltc3887@4f {
+                compatible = "lltc,ltc3887";
+                reg = <0x4f>;
+                status = "okay";
+                regulators {
+                        vout0 {
+                                regulator-name = "V09_OUTPUT1";
+                        };
+
+                        vout1 {
+                                regulator-name = "V09_OUTPUT2";
+                        };
+                };
+        };
+       tps544C20@1b {
+                compatible = "hwmon,tps40400";
+                reg = <0x1b>;
+                status = "okay";
+        };
+
 };
 
 &sata {
-	status = "okay";
+	status = "disabled";
 };
 
 &pfe {
@@ -60,30 +119,38 @@
 		#size-cells = <0>;
 		reg = <0x0>;	/* GEM_ID */
 		fsl,mdio-mux-val = <0x0>;
+		fsl,gemac-phy-id = <0x3>;
 		phy-mode = "sgmii";
 		phy-handle = <&sgmii_phy>;
 	};
 
-	pfe_mac1: ethernet@1 {
-		compatible = "fsl,pfe-gemac-port";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg = <0x1>;	/* GEM_ID */
-		fsl,mdio-mux-val = <0x0>;
-		phy-mode = "rgmii-txid";
-		phy-handle = <&rgmii_phy>;
-	};
+//	pfe_mac1: ethernet@1 {
+//		compatible = "fsl,pfe-gemac-port";
+//		#address-cells = <1>;
+//		#size-cells = <0>;
+//		reg = <0x1>;	/* GEM_ID */
+//		fsl,pfe-phy-if-flags = <0x1>; /* Disable */
+//		fsl,mdio-mux-val = <0x0>;
+//		phy-mode = "rgmii-txid";
+//		phy-handle = <&rgmii_phy>;
+//	};
+
+
 	mdio@0 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		sgmii_phy: ethernet-phy@2 {
-			reg = <0x2>;
+		sgmii_phy: ethernet-phy@3 {
+			reg = <0x3>;
+			ti,rx-internal-delay = <0x8>;
+			ti,tx-internal-delay = <0xa>;
+			ti,fifo-depth = <DP83867_PHYCR_FIFO_DEPTH_4_B_NIB>;
+			device_type = "ethernet-phy";
 		};
 
-		rgmii_phy: ethernet-phy@1 {
-			reg = <0x1>;
-		};
+//		rgmii_phy: ethernet-phy@1 {
+//			reg = <0x1>;
+//		};
 	};
 };
 
@@ -96,8 +163,24 @@
 		spi-max-frequency = <20000000>;
 		m25p,fast-read;
 		reg = <0>;
-		spi-rx-bus-width = <2>;
-		spi-tx-bus-width = <2>;
+		spi-rx-bus-width = <1>;
+		spi-tx-bus-width = <1>;
 	};
 
+};
+
+&dspi {
+        status = "okay";
+	bus-num = <0>;
+	pinctrl-names = "default";
+	spi@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+                reg = <0x0>;
+                spi-max-frequency = <10000000>;
+                compatible = "linux,spidev";
+                fsl,spi-cs-sck-delay = <100>;
+                fsl,spi-sck-cs-delay = <50>;
+                status = "okay";
+        };
 };

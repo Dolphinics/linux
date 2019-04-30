@@ -327,9 +327,9 @@
 			interrupts = <0 64 IRQ_TYPE_LEVEL_HIGH>;
 			clock-names = "dspi";
 			clocks = <&clockgen 4 0>;
-			spi-num-chipselects = <5>;
+			spi-num-chipselects = <1>;
 			big-endian;
-			status = "disabled";
+			status = "okay";
 		};
 
 		duart0: serial@21c0500 {
@@ -337,7 +337,7 @@
 			reg = <0x00 0x21c0500 0x0 0x100>;
 			interrupts = <0 54 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clockgen 4 0>;
-			status = "disabled";
+			status = "okay";
 		};
 
 		duart1: serial@21c0600 {
@@ -345,7 +345,7 @@
 			reg = <0x00 0x21c0600 0x0 0x100>;
 			interrupts = <0 54 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clockgen 4 0>;
-			status = "disabled";
+			status = "okay";
 		};
 
 		gpio0: gpio@2300000 {
@@ -388,7 +388,7 @@
 			clock-names = "qspi_en", "qspi";
 			clocks = <&clockgen 4 0>, <&clockgen 4 0>;
 			big-endian;
-			status = "disabled";
+			status = "okay";
 		};
 
 		sai1: sai@2b50000 {
@@ -519,7 +519,7 @@
 		reg =   <0x0 0x04000000 0x0 0xc00000>,	/* AXI 16M */
 			<0x0 0x83400000 0x0 0xc00000>;  /* PFE DDR 12M */
 		reg-names = "pfe", "pfe-ddr";
-		fsl,pfe-num-interfaces = <0x2>;
+		fsl,pfe-num-interfaces = <0x1>;
 		interrupts = <0 172 0x4>,    /* HIF interrupt */
 			     <0 173 0x4>,    /*HIF_NOCPY interrupt */
 			     <0 174 0x4>;    /* WoL interrupt */
@@ -531,13 +531,6 @@
 		clock-names = "pfe";
 
 		status = "okay";
-	};
-
-	firmware {
-		optee {
-			compatible = "linaro,optee-tz";
-			method = "smc";
-		};
 	};
 };
 
